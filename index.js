@@ -1,55 +1,76 @@
-const { MongoClient } = require('mongodb-legacy');
-const assert = require('assert');
+const { MongoClient } = require("mongodb-legacy");
+const dboper = require("./operations");
+const assert = require("assert");
 
 // Connection URL to MongoDB
-const url = 'mongodb://localhost:27017/';
+const url = "mongodb://localhost:27017/";
 
 // Database name
-const dbName = 'nucampsite';
+const dbName = "nucampsite";
 
 // Connect to the MongoDB server
 MongoClient.connect(url, {}, (err, client) => {
-    // Check if the connection resulted in an error
-    // This should check for null, not undefined
-    assert.strictEqual(err, undefined); 
+  // Check if the connection resulted in an error
+  // This should check for null, not undefined
+  assert.strictEqual(err, undefined);
 
-    console.log('Connected correctly to server');
+  console.log("Connected correctly to server");
 
-    // Connect to the specific database
-    const db = client.db(dbName);
+  // Connect to the specific database
+  const db = client.db(dbName);
 
-    // Drop the collection 'campsites' if it exists
-    db.dropCollection('campsites', (err, result) => {
-        // Check if dropping the collection resulted in an error
-        assert.strictEqual(err, undefined); 
+  // Drop the collection 'campsites' if it exists
+  // Insert a document into the 'campsites' collection
+  dboper.insertDocument(
+    db,
+    { name: "Breadcrumb Trail Campground", description: "Test" },
+    "campsites",
+    (result) => {
+      // Log the result of the insertion
+      console.log("Insert Document:", result.ops);
 
-        console.log('Dropped Collection', result);
+      // Find all documents in the 'campsites' collection
+      dboper.findDocument(db, "campsites", (docs) => {
+        // Log the documents found
+        console.log("Found Documents:", docs);
 
-        // Access the 'campsites' collection
-        const collection = db.collection('campsites');
+        // Update the inserted document in the 'campsites' collection
+        dboper.updateDocument(
+          db,
+          { name: "Breadcrumb Trail Campground" },
+          { description: "Updated Test Description" },
+          "campsites",
+          (result) => {
+            // Log the number of documents that were updated
+            console.log("Updated Document Count:", result.modifiedCount);
 
-        // Insert a new document into the 'campsites' collection
-        collection.insertOne(
-            { name: 'Breadcrumb Trail Campground', description: 'Test' },
-            (err, result) => {
-                // Check if inserting the document resulted in an error
-                assert.strictEqual(err, undefined); 
+            // Find all documents again in the 'campsites' collection after the update
+            dboper.findDocument(
+              db,
+              "campsites",
 
-                // Log the result of the insert operation
-                console.log('Insert Document:', result.ops); 
+              (docs) => {
+                // Log the documents found, which should reflect the update
+                console.log("Found Documents:", docs);
 
-                // Retrieve all documents from the 'campsites' collection
-                collection.find().toArray((err, docs) => {
-                    // Check if retrieving the documents resulted in an error
-                    assert.strictEqual(err, undefined); // This should check for null, not undefined
+                // Remove the document from the 'campsites' collection
+                dboper.removeDocument(
+                  db,
+                  { name: "Breadcrumb Trail Campground" },
+                  "campsites",
+                  (result) => {
+                    // Log the number of documents that were deleted
+                    console.log("Deleted Document Count:", result.deletedCount);
 
-                    // Log the found documents
-                    console.log('Found Documents:', docs);
-
-                    // Close the MongoDB connection
+                    // Close the database connection once all operations are complete
                     client.close();
-                });
-            },
+                  }
+                );
+              }
+            );
+          }
         );
-    });
+      });
+    }
+  );
 });
